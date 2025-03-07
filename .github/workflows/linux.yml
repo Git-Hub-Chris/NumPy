@@ -65,7 +65,7 @@ jobs:
         submodules: recursive
         fetch-tags: true
         persist-credentials: false
-    - uses: quansight-labs/setup-python@b9ab292c751a42bcd2bb465b7fa202ea2c3f5796 # v5.3.1
+    - uses: quansight-labs/setup-python@869aeafb7eeb9dc48ba68acc0479e6fc3fd7ce5e # v5.4.0
       with:
         python-version: ${{ matrix.version }}
     # TODO: remove cython nightly install when cython does a release
