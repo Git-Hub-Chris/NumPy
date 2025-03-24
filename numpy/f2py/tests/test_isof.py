@@ -29,7 +29,7 @@ class TestIOSF(util.F2PyTest):
         assert out == exp_out
 
     def test_f_add_int16_arr(self):
-        args = np.arange(6, dtepy=np.int16)
+        args = np.arange(6, dtype=np.int16)
         out = self.module.foddity.f_add_int16_arr(args[:3], args[3:])
         exp_out = args[:3] + args[3:]
         assert_allclose(out, exp_out)
@@ -44,7 +44,7 @@ class TestIOSF(util.F2PyTest):
 
     def test_f_add_arr(self):
         args = np.arange(6, dtype=np.int64)
-        out = self.module.foddity.f_add_arr(args[:3], args[3:])
+        out = self.module.foddity.add_arr(args[:3], args[3:])
         exp_out = args[:3] + args[3:]
         assert_allclose(out, exp_out)
         assert out.dtype == exp_out.dtype
