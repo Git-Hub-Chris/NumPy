@@ -9,12 +9,12 @@ class TestIOSF(util.F2PyTest):
     ]
 
     def test_f_real64(self):
-        out = self.module.foddity.f_add(1, 2)
+        out = self.module.foddity.f_add(1.0, 2.0)
         exp_out = 3
         assert out == exp_out
 
     def test_f_addf(self):
-        out = self.module.foddity.f_addf(1, 2)
+        out = self.module.foddity.f_addf(1.0, 2.0)
         exp_out = 3
         assert out == exp_out
 
