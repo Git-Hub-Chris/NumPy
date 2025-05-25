@@ -88,6 +88,7 @@ typedef struct {
                        provided, then this is NULL. */
 } ufunc_full_args;
 
+extern PyUFuncObject *UFUNC_MAXIMUM;
 
 /* ---------------------------------------------------------------- */
 
@@ -4325,7 +4326,21 @@ ufunc_generic_fastcall(PyUFuncObject *ufunc,
                 ufunc_get_name_cstr(ufunc) , nin, nop, len_args);
         goto fail;
     }
-
+    // 2) Only when there *are* extra pos-args *and* no keywords...
+    if (len_args > nin && (kwnames==NULL || PyTuple_Size(kwnames)==0)) {
+        /* 3) ...then check if it’s the "maximum" ufunc */
+        // if (strcmp(ufunc->name, "maximum") == 0) {
+        if (ufunc == UFUNC_MAXIMUM) {
+            PyErr_WarnFormat(PyExc_DeprecationWarning, 1,
+                "Passing more than 2 positional arguments to np.maximum "
+                "is deprecated; use out=keyword or np.maximum.reduce.");
+            PyErr_Format(PyExc_TypeError,
+                "np.maximum() takes exactly 2 input arguments (%zd given).",
+                len_args);
+            goto fail;
+        }
+    }
+ 
     /* Fetch input arguments. */
     full_args.in = PyArray_TupleFromItems(ufunc->nin, args, 0);
     if (full_args.in == NULL) {
