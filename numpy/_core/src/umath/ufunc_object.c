@@ -4273,6 +4273,23 @@ replace_with_wrapped_result_and_return(PyUFuncObject *ufunc,
     return NULL;
 }
 
+/* Helper: is this PyTuple / PyList where every element is ndarray/None? */
+static int
+_is_sequence_of_arrays_or_None(PyObject *obj)
+{
+    if (!PyTuple_Check(obj) && !PyList_Check(obj)) {
+        return 0;
+    }
+    Py_ssize_t n = PySequence_Size(obj);
+    for (Py_ssize_t i = 0; i < n; i++) {
+        PyObject *item = PySequence_Fast_GET_ITEM(obj, i);
+        if (!PyArray_Check(item) && item != Py_None) {
+            return 0;            /* found something illegal */
+        }
+    }
+    return 1;                    /* every element ok */
+}
+
 
 /*
  * Main ufunc call implementation.
@@ -4326,11 +4343,17 @@ ufunc_generic_fastcall(PyUFuncObject *ufunc,
                 ufunc_get_name_cstr(ufunc) , nin, nop, len_args);
         goto fail;
     }
-    // 2) Only when there *are* extra pos-args *and* no keywords...
-    if (len_args > nin && (kwnames==NULL || PyTuple_Size(kwnames)==0)) {
-        /* 3) ...then check if it’s the "maximum" ufunc */
-        // if (strcmp(ufunc->name, "maximum") == 0) {
-        if (ufunc == UFUNC_MAXIMUM) {
+    /* Extra positional args but *no* keywords? */
+    if (len_args > nin && (kwnames == NULL || PyTuple_GET_SIZE(kwnames) == 0)) {
+        PyObject *extra = args[nin];
+
+        /* legal out? -> skip */
+        if (PyArray_Check(extra) || extra == Py_None ||
+            _is_sequence_of_arrays_or_None(extra)) {
+            /* it's a genuine out array/tuple – do nothing */
+        }
+        /* otherwise, if this is np.maximum, raise */
+        else if (ufunc == UFUNC_MAXIMUM) {
             PyErr_WarnFormat(PyExc_DeprecationWarning, 1,
                 "Passing more than 2 positional arguments to np.maximum "
                 "is deprecated; use out=keyword or np.maximum.reduce.");
@@ -4340,6 +4363,7 @@ ufunc_generic_fastcall(PyUFuncObject *ufunc,
             goto fail;
         }
     }
+
  
     /* Fetch input arguments. */
     full_args.in = PyArray_TupleFromItems(ufunc->nin, args, 0);
