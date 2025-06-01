@@ -11,6 +11,11 @@ jobs:
     permissions:
       pull-requests: write  # to add labels
     steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+      with:
+        egress-policy: audit
+
     - name: Label the PR
       uses: gerrymanoim/pr-prefix-labeler@c8062327f6de59a9ae1c19f7f07cacd0b976b6fa # v3
       continue-on-error: true
