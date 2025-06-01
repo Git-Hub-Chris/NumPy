@@ -35,7 +35,12 @@ jobs:
     # Steps require - checkout code, run CxFlow Action, Upload SARIF report (optional)
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@v4
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     # Runs the Checkmarx Scan leveraging the latest version of CxFlow - REFER to Action README for list of inputs
     - name: Checkmarx CxFlow Action
       uses: checkmarx-ts/checkmarx-cxflow-github-action@bfcb4817aadf2f63c9665ad901acfabd2410976e
@@ -50,6 +55,6 @@ jobs:
         params: --namespace=${{ github.repository_owner }} --repo-name=${{ github.event.repository.name }} --branch=${{ github.ref }} --cx-flow.filter-severity --cx-flow.filter-category --checkmarx.disable-clubbing=true --repo-url=${{ github.event.repository.url }}
     # Upload the Report for CodeQL/Security Alerts
     - name: Upload SARIF file
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
       with:
         sarif_file: cx.sarif
