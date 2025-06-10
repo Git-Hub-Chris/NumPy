@@ -39,7 +39,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Black Duck SCA scan
-        uses: blackduck-inc/black-duck-security-scan@d6619b81f797c99debb8a10b64fd1e4d3bddaf99
+        uses: blackduck-inc/black-duck-security-scan@79a5a009b167d603cb260b6d92c569c01f4dd7cc
         with:
           ### ---------- BLACKDUCK SCA SCANNING: REQUIRED FIELDS ----------
           blackducksca_url: ${{ vars.BLACKDUCKSCA_URL }}
