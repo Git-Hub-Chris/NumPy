@@ -38,6 +38,8 @@ jobs:
 
   build_wheels:
     name: Build wheel for cp${{ matrix.python }}-${{ matrix.platform }}
+    permissions:
+      contents: read
     needs: get_commit_message
     if: >-
       contains(needs.get_commit_message.outputs.message, '[wheel build]') ||
