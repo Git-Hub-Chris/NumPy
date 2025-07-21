@@ -321,29 +321,7 @@ lapack_lite_zungqr(PyObject *NPY_UNUSED(self), PyObject *args)
         fortran_int lapack_lite_status;
         fortran_int m, n, k, lwork;
         PyObject *a, *tau, *work;
-        fortran_int lda;
-        fortran_int info;
 
-        TRY(PyArg_ParseTuple(args,
-                             (FINT_PYFMT FINT_PYFMT FINT_PYFMT "O"
-                              FINT_PYFMT "OO" FINT_PYFMT "" FINT_PYFMT
-                              ":zungqr"),
-                             &m, &n, &k, &a, &lda, &tau, &work, &lwork, &info));
-        TRY(check_object(a,NPY_CDOUBLE,"a","NPY_CDOUBLE","zungqr"));
-        TRY(check_object(tau,NPY_CDOUBLE,"tau","NPY_CDOUBLE","zungqr"));
-        TRY(check_object(work,NPY_CDOUBLE,"work","NPY_CDOUBLE","zungqr"));
-
-
-        lapack_lite_status =
-            FNAME(zungqr)(&m, &n, &k, ZDATA(a), &lda, ZDATA(tau), ZDATA(work),
-                          &lwork, &info);
-        if (PyErr_Occurred()) {
-            return NULL;
-        }
-
-        return Py_BuildValue(("{s:" FINT_PYFMT ",s:" FINT_PYFMT "}"),
-                             "zungqr_",lapack_lite_status,
-                             "info",info);
 }
 
 

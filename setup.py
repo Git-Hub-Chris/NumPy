@@ -1,14 +1,3 @@
-#!/usr/bin/env python3
-""" NumPy is the fundamental package for array computing with Python.
-
-It provides:
-
-- a powerful N-dimensional array object
-- sophisticated (broadcasting) functions
-- tools for integrating C/C++ and Fortran code
-- useful linear algebra, Fourier transform, and random number capabilities
-- and much more
-
 Besides its obvious scientific uses, NumPy can also be used as an efficient
 multi-dimensional container of generic data. Arbitrary data-types can be
 defined. This allows NumPy to seamlessly and speedily integrate with a wide
@@ -129,10 +118,6 @@ def configuration(parent_package='', top_path=None):
                        quiet=True)
 
     config.add_subpackage('numpy')
-    config.add_data_files(('numpy', 'LICENSE.txt'))
-    config.add_data_files(('numpy', 'numpy/*.pxd'))
-
-    config.get_version('numpy/version.py')  # sets config.version
 
     return config
 

@@ -134,40 +134,7 @@ extern "C" {
    inline the constants inside a for loop making it a moot point
 */
 
-#define PyArray_GETPTR1(obj, i) ((void *)(PyArray_BYTES(obj) + \
-                                         (i)*PyArray_STRIDES(obj)[0]))
 
-#define PyArray_GETPTR2(obj, i, j) ((void *)(PyArray_BYTES(obj) + \
-                                            (i)*PyArray_STRIDES(obj)[0] + \
-                                            (j)*PyArray_STRIDES(obj)[1]))
-
-#define PyArray_GETPTR3(obj, i, j, k) ((void *)(PyArray_BYTES(obj) + \
-                                            (i)*PyArray_STRIDES(obj)[0] + \
-                                            (j)*PyArray_STRIDES(obj)[1] + \
-                                            (k)*PyArray_STRIDES(obj)[2]))
-
-#define PyArray_GETPTR4(obj, i, j, k, l) ((void *)(PyArray_BYTES(obj) + \
-                                            (i)*PyArray_STRIDES(obj)[0] + \
-                                            (j)*PyArray_STRIDES(obj)[1] + \
-                                            (k)*PyArray_STRIDES(obj)[2] + \
-                                            (l)*PyArray_STRIDES(obj)[3]))
-
-/* Move to arrayobject.c once PyArray_XDECREF_ERR is removed */
-static NPY_INLINE void
-PyArray_DiscardWritebackIfCopy(PyArrayObject *arr)
-{
-    PyArrayObject_fields *fa = (PyArrayObject_fields *)arr;
-    if (fa && fa->base) {
-        if ((fa->flags & NPY_ARRAY_UPDATEIFCOPY) ||
-                (fa->flags & NPY_ARRAY_WRITEBACKIFCOPY)) {
-            PyArray_ENABLEFLAGS((PyArrayObject*)fa->base, NPY_ARRAY_WRITEABLE);
-            Py_DECREF(fa->base);
-            fa->base = NULL;
-            PyArray_CLEARFLAGS(arr, NPY_ARRAY_WRITEBACKIFCOPY);
-            PyArray_CLEARFLAGS(arr, NPY_ARRAY_UPDATEIFCOPY);
-        }
-    }
-}
 
 #define PyArray_DESCR_REPLACE(descr) do { \
                 PyArray_Descr *_new_; \
