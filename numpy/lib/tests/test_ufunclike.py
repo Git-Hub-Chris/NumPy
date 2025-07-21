@@ -1,66 +1,104 @@
-"""
->>> import numpy.core as nx
->>> import numpy.lib.ufunclike as U
+import numpy as np
+import numpy.core as nx
+import numpy.lib.ufunclike as ufl
+from numpy.testing import (
+    assert_, assert_equal, assert_array_equal, assert_warns, assert_raises
+)
 
-Test fix:
->>> a = nx.array([[1.0, 1.1, 1.5, 1.8], [-1.0, -1.1, -1.5, -1.8]])
->>> U.fix(a)
-array([[ 1.,  1.,  1.,  1.],
-       [ 0., -1., -1., -1.]])
->>> y = nx.zeros(a.shape, float)
->>> U.fix(a, y)
-array([[ 1.,  1.,  1.,  1.],
-       [ 0., -1., -1., -1.]])
->>> y
-array([[ 1.,  1.,  1.,  1.],
-       [ 0., -1., -1., -1.]])
 
-Test isposinf, isneginf, sign
->>> a = nx.array([nx.Inf, -nx.Inf, nx.NaN, 0.0, 3.0, -3.0])
->>> U.isposinf(a)
-array([ True, False, False, False, False, False], dtype=bool)
->>> U.isneginf(a)
-array([False,  True, False, False, False, False], dtype=bool)
->>> olderr = nx.seterr(invalid='ignore')
->>> nx.sign(a)
-array([ 1., -1.,  0.,  0.,  1., -1.])
->>> olderr = nx.seterr(**olderr)
+class TestUfunclike:
 
-Same thing with an output array:
->>> y = nx.zeros(a.shape, bool)
->>> U.isposinf(a, y)
-array([ True, False, False, False, False, False], dtype=bool)
->>> y
-array([ True, False, False, False, False, False], dtype=bool)
->>> U.isneginf(a, y)
-array([False,  True, False, False, False, False], dtype=bool)
->>> y
-array([False,  True, False, False, False, False], dtype=bool)
->>> olderr = nx.seterr(invalid='ignore')
->>> nx.sign(a, y)
-array([ True,  True, False, False,  True,  True], dtype=bool)
->>> olderr = nx.seterr(**olderr)
->>> y
-array([ True,  True, False, False,  True,  True], dtype=bool)
+    def test_isposinf(self):
+        a = nx.array([nx.inf, -nx.inf, nx.nan, 0.0, 3.0, -3.0])
+        out = nx.zeros(a.shape, bool)
+        tgt = nx.array([True, False, False, False, False, False])
 
-Now log2:
->>> a = nx.array([4.5, 2.3, 6.5])
->>> U.log2(a)
-array([ 2.169925  ,  1.20163386,  2.70043972])
->>> 2**_
-array([ 4.5,  2.3,  6.5])
->>> y = nx.zeros(a.shape, float)
->>> U.log2(a, y)
-array([ 2.169925  ,  1.20163386,  2.70043972])
->>> y
-array([ 2.169925  ,  1.20163386,  2.70043972])
+        res = ufl.isposinf(a)
+        assert_equal(res, tgt)
+        res = ufl.isposinf(a, out)
+        assert_equal(res, tgt)
+        assert_equal(out, tgt)
 
-"""
+        a = a.astype(np.complex_)
+        with assert_raises(TypeError):
+            ufl.isposinf(a)
 
-from numpy.testing import *
+    def test_isneginf(self):
+        a = nx.array([nx.inf, -nx.inf, nx.nan, 0.0, 3.0, -3.0])
+        out = nx.zeros(a.shape, bool)
+        tgt = nx.array([False, True, False, False, False, False])
 
-class test_docs(NumpyTestCase):
-    def check_doctests(self): return self.rundocs()
+        res = ufl.isneginf(a)
+        assert_equal(res, tgt)
+        res = ufl.isneginf(a, out)
+        assert_equal(res, tgt)
+        assert_equal(out, tgt)
 
-if __name__ == "__main__":
-    NumpyTest().run()
+        a = a.astype(np.complex_)
+        with assert_raises(TypeError):
+            ufl.isneginf(a)
+
+    def test_fix(self):
+        a = nx.array([[1.0, 1.1, 1.5, 1.8], [-1.0, -1.1, -1.5, -1.8]])
+        out = nx.zeros(a.shape, float)
+        tgt = nx.array([[1., 1., 1., 1.], [-1., -1., -1., -1.]])
+
+        res = ufl.fix(a)
+        assert_equal(res, tgt)
+        res = ufl.fix(a, out)
+        assert_equal(res, tgt)
+        assert_equal(out, tgt)
+        assert_equal(ufl.fix(3.14), 3)
+
+    def test_fix_with_subclass(self):
+        class MyArray(nx.ndarray):
+            def __new__(cls, data, metadata=None):
+                res = nx.array(data, copy=True).view(cls)
+                res.metadata = metadata
+                return res
+
+            def __array_wrap__(self, obj, context=None):
+                if isinstance(obj, MyArray):
+                    obj.metadata = self.metadata
+                return obj
+
+            def __array_finalize__(self, obj):
+                self.metadata = getattr(obj, 'metadata', None)
+                return self
+
+        a = nx.array([1.1, -1.1])
+        m = MyArray(a, metadata='foo')
+        f = ufl.fix(m)
+        assert_array_equal(f, nx.array([1, -1]))
+        assert_(isinstance(f, MyArray))
+        assert_equal(f.metadata, 'foo')
+
+        # check 0d arrays don't decay to scalars
+        m0d = m[0,...]
+        m0d.metadata = 'bar'
+        f0d = ufl.fix(m0d)
+        assert_(isinstance(f0d, MyArray))
+        assert_equal(f0d.metadata, 'bar')
+
+    def test_deprecated(self):
+        # NumPy 1.13.0, 2017-04-26
+        assert_warns(DeprecationWarning, ufl.fix, [1, 2], y=nx.empty(2))
+        assert_warns(DeprecationWarning, ufl.isposinf, [1, 2], y=nx.empty(2))
+        assert_warns(DeprecationWarning, ufl.isneginf, [1, 2], y=nx.empty(2))
+
+    def test_scalar(self):
+        x = np.inf
+        actual = np.isposinf(x)
+        expected = np.True_
+        assert_equal(actual, expected)
+        assert_equal(type(actual), type(expected))
+
+        x = -3.4
+        actual = np.fix(x)
+        expected = np.float64(-3.0)
+        assert_equal(actual, expected)
+        assert_equal(type(actual), type(expected))
+
+        out = np.array(0.0)
+        actual = np.fix(x, out=out)
+        assert_(actual is out)

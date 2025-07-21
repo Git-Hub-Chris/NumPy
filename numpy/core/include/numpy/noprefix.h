@@ -1,11 +1,18 @@
-#ifndef NPY_NOPREFIX_H
-#define NPY_NOPREFIX_H
+#ifndef NUMPY_CORE_INCLUDE_NUMPY_NOPREFIX_H_
+#define NUMPY_CORE_INCLUDE_NUMPY_NOPREFIX_H_
 
-/* You can directly include noprefix.h as a backward
-compatibility measure*/
+/*
+ * You can directly include noprefix.h as a backward
+ * compatibility measure
+ */
 #ifndef NPY_NO_PREFIX
 #include "ndarrayobject.h"
+#include "npy_interrupt.h"
 #endif
+
+#define SIGSETJMP   NPY_SIGSETJMP
+#define SIGLONGJMP  NPY_SIGLONGJMP
+#define SIGJMP_BUF  NPY_SIGJMP_BUF
 
 #define MAX_DIMS NPY_MAXDIMS
 
@@ -54,14 +61,21 @@ compatibility measure*/
 #define Complex256  npy_complex256
 #define intp        npy_intp
 #define uintp       npy_uintp
+#define datetime    npy_datetime
+#define timedelta   npy_timedelta
 
-#define SIZEOF_INTP NPY_SIZEOF_INTP
-#define SIZEOF_UINTP NPY_SIZEOF_UINTP
+#define SIZEOF_LONGLONG         NPY_SIZEOF_LONGLONG
+#define SIZEOF_INTP             NPY_SIZEOF_INTP
+#define SIZEOF_UINTP            NPY_SIZEOF_UINTP
+#define SIZEOF_HALF             NPY_SIZEOF_HALF
+#define SIZEOF_LONGDOUBLE       NPY_SIZEOF_LONGDOUBLE
+#define SIZEOF_DATETIME         NPY_SIZEOF_DATETIME
+#define SIZEOF_TIMEDELTA        NPY_SIZEOF_TIMEDELTA
 
 #define LONGLONG_FMT NPY_LONGLONG_FMT
 #define ULONGLONG_FMT NPY_ULONGLONG_FMT
 #define LONGLONG_SUFFIX NPY_LONGLONG_SUFFIX
-#define ULONGLONG_SUFFIX NPY_ULONGLONG_SUFFIX(x)
+#define ULONGLONG_SUFFIX NPY_ULONGLONG_SUFFIX
 
 #define MAX_INT8 127
 #define MIN_INT8 -128
@@ -97,20 +111,24 @@ compatibility measure*/
 #define MAX_LONGLONG NPY_MAX_LONGLONG
 #define MIN_LONGLONG NPY_MIN_LONGLONG
 #define MAX_ULONGLONG NPY_MAX_ULONGLONG
+#define MIN_DATETIME NPY_MIN_DATETIME
+#define MAX_DATETIME NPY_MAX_DATETIME
+#define MIN_TIMEDELTA NPY_MIN_TIMEDELTA
+#define MAX_TIMEDELTA NPY_MAX_TIMEDELTA
 
-#define SIZEOF_LONGDOUBLE NPY_SIZEOF_LONGDOUBLE
-#define SIZEOF_LONGLONG   NPY_SIZEOF_LONGLONG
 #define BITSOF_BOOL       NPY_BITSOF_BOOL
 #define BITSOF_CHAR       NPY_BITSOF_CHAR
 #define BITSOF_SHORT      NPY_BITSOF_SHORT
 #define BITSOF_INT        NPY_BITSOF_INT
 #define BITSOF_LONG       NPY_BITSOF_LONG
 #define BITSOF_LONGLONG   NPY_BITSOF_LONGLONG
+#define BITSOF_HALF       NPY_BITSOF_HALF
 #define BITSOF_FLOAT      NPY_BITSOF_FLOAT
 #define BITSOF_DOUBLE     NPY_BITSOF_DOUBLE
 #define BITSOF_LONGDOUBLE NPY_BITSOF_LONGDOUBLE
+#define BITSOF_DATETIME   NPY_BITSOF_DATETIME
+#define BITSOF_TIMEDELTA   NPY_BITSOF_TIMEDELTA
 
-#define PyArray_UCS4 npy_ucs4
 #define _pya_malloc PyArray_malloc
 #define _pya_free PyArray_free
 #define _pya_realloc PyArray_realloc
@@ -119,8 +137,8 @@ compatibility measure*/
 #define BEGIN_THREADS     NPY_BEGIN_THREADS
 #define END_THREADS       NPY_END_THREADS
 #define ALLOW_C_API_DEF   NPY_ALLOW_C_API_DEF
-#define	ALLOW_C_API       NPY_ALLOW_C_API
-#define	DISABLE_C_API     NPY_DISABLE_C_API
+#define ALLOW_C_API       NPY_ALLOW_C_API
+#define DISABLE_C_API     NPY_DISABLE_C_API
 
 #define PY_FAIL NPY_FAIL
 #define PY_SUCCEED NPY_SUCCEED
@@ -148,6 +166,7 @@ compatibility measure*/
 #define NOTSWAPPED         NPY_NOTSWAPPED
 #define WRITEABLE          NPY_WRITEABLE
 #define UPDATEIFCOPY       NPY_UPDATEIFCOPY
+#define WRITEBACKIFCOPY    NPY_ARRAY_WRITEBACKIFCOPY
 #define ARR_HAS_DESCR      NPY_ARR_HAS_DESCR
 #define BEHAVED            NPY_BEHAVED
 #define BEHAVED_NS         NPY_BEHAVED_NS
@@ -185,7 +204,9 @@ compatibility measure*/
 #define MAX_UINTP NPY_MAX_UINTP
 #define INTP_FMT NPY_INTP_FMT
 
+#ifndef PYPY_VERSION
 #define REFCOUNT PyArray_REFCOUNT
 #define MAX_ELSIZE NPY_MAX_ELSIZE
-
 #endif
+
+#endif  /* NUMPY_CORE_INCLUDE_NUMPY_NOPREFIX_H_ */

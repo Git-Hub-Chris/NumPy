@@ -1,14 +1,15 @@
 import os
-import sys
 
-from numpy.distutils.cpuinfo import cpu
 from numpy.distutils.fcompiler.gnu import GnuFCompiler
 
-class VastFCompiler(GnuFCompiler):
+compilers = ['VastFCompiler']
 
+class VastFCompiler(GnuFCompiler):
     compiler_type = 'vast'
-    version_pattern = r'\s*Pacific-Sierra Research vf90 '\
-                      '(Personal|Professional)\s+(?P<version>[^\s]*)'
+    compiler_aliases = ()
+    description = 'Pacific-Sierra Research Fortran 90 Compiler'
+    version_pattern = (r'\s*Pacific-Sierra Research vf90 '
+                       r'(Personal|Professional)\s+(?P<version>[^\s]*)')
 
     # VAST f90 does not support -o with -c. So, object files are created
     # to the current directory and then moved to build directory
@@ -19,7 +20,7 @@ class VastFCompiler(GnuFCompiler):
         'compiler_f77' : ["g77"],
         'compiler_fix' : ["f90", "-Wv,-ya"],
         'compiler_f90' : ["f90"],
-        'linker_so'    : ["f90"],
+        'linker_so'    : ["<F90>"],
         'archiver'     : ["ar", "-cr"],
         'ranlib'       : ["ranlib"]
         }
@@ -31,8 +32,8 @@ class VastFCompiler(GnuFCompiler):
 
     def get_version_cmd(self):
         f90 = self.compiler_f90[0]
-        d,b = os.path.split(f90)
-        vf90 = os.path.join(d,'v'+b)
+        d, b = os.path.split(f90)
+        vf90 = os.path.join(d, 'v'+b)
         return vf90
 
     def get_flags_arch(self):
@@ -47,7 +48,5 @@ class VastFCompiler(GnuFCompiler):
 if __name__ == '__main__':
     from distutils import log
     log.set_verbosity(2)
-    from numpy.distutils.fcompiler import new_fcompiler
-    compiler = new_fcompiler(compiler='vast')
-    compiler.customize()
-    print compiler.get_version()
+    from numpy.distutils import customized_fcompiler
+    print(customized_fcompiler(compiler='vast').get_version())

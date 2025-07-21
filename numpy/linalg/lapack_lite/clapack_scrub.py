@@ -1,21 +1,23 @@
-#!/usr/bin/env python2.4
-
-import sys, os
-from cStringIO import StringIO
+#!/usr/bin/env python2.7
+# WARNING! This a Python 2 script. Read README.rst for rationale.
+import os
 import re
+import sys
 
-from Plex import *
-from Plex.Traditional import re as Re
+from plex import Scanner, Str, Lexicon, Opt, Bol, State, AnyChar, TEXT, IGNORE
+from plex.traditional import re as Re
+
+try:
+    from io import BytesIO as UStringIO  # Python 2
+except ImportError:
+    from io import StringIO as UStringIO  # Python 3
+
 
 class MyScanner(Scanner):
     def __init__(self, info, name='<default>'):
         Scanner.__init__(self, self.lexicon, info, name)
 
     def begin(self, state_name):
-#        if self.state_name == '':
-#            print '<default>'
-#        else:
-#            print self.state_name
         Scanner.begin(self, state_name)
 
 def sep_seq(sequence, sep):
@@ -25,13 +27,13 @@ def sep_seq(sequence, sep):
     return pat
 
 def runScanner(data, scanner_class, lexicon=None):
-    info = StringIO(data)
-    outfo = StringIO()
+    info = UStringIO(data)
+    outfo = UStringIO()
     if lexicon is not None:
         scanner = scanner_class(lexicon, info)
     else:
         scanner = scanner_class(info)
-    while 1:
+    while True:
         value, text = scanner.read()
         if value is None:
             break
@@ -74,7 +76,7 @@ class LenSubsScanner(MyScanner):
                       "i_len", "do_fio", "do_lio") + iofun
 
     # Routines to not scrub the ftnlen argument from
-    keep_ftnlen = (Str('ilaenv_') | Str('s_rnge')) + Str('(')
+    keep_ftnlen = (Str('ilaenv_') | Str('iparmq_') | Str('s_rnge')) + Str('(')
 
     lexicon = Lexicon([
         (iofunctions,                           TEXT),
@@ -104,7 +106,7 @@ def cleanSource(source):
     source = re.sub(r'\n\n\n\n+', r'\n\n\n', source)
     return source
 
-class LineQueue(object):
+class LineQueue:
     def __init__(self):
         object.__init__(self)
         self._queue = []
@@ -193,7 +195,7 @@ def cleanComments(source):
             return SourceLines
 
     state = SourceLines
-    for line in StringIO(source):
+    for line in UStringIO(source):
         state = state(line)
     comments.flushTo(lines)
     return lines.getValue()
@@ -221,12 +223,46 @@ def removeHeader(source):
         return OutOfHeader
 
     state = LookingForHeader
-    for line in StringIO(source):
+    for line in UStringIO(source):
+        state = state(line)
+    return lines.getValue()
+
+def removeSubroutinePrototypes(source):
+    # This function has never worked as advertised by its name:
+    # - "/* Subroutine */" declarations may span multiple lines and
+    #   cannot be matched by a line by line approach.
+    # - The caret in the initial regex would prevent any match, even
+    #   of single line "/* Subroutine */" declarations.
+    #
+    # While we could "fix" this function to do what the name implies
+    # it should do, we have no hint of what it should really do.
+    #
+    # Therefore we keep the existing (non-)functionaity, documenting
+    # this function as doing nothing at all.
+    return source
+
+def removeBuiltinFunctions(source):
+    lines = LineQueue()
+    def LookingForBuiltinFunctions(line):
+        if line.strip() == '/* Builtin functions */':
+            return InBuiltInFunctions
+        else:
+            lines.add(line)
+            return LookingForBuiltinFunctions
+
+    def InBuiltInFunctions(line):
+        if line.strip() == '':
+            return LookingForBuiltinFunctions
+        else:
+            return InBuiltInFunctions
+
+    state = LookingForBuiltinFunctions
+    for line in UStringIO(source):
         state = state(line)
     return lines.getValue()
 
 def replaceDlamch(source):
-    """Replace dlamch_ calls with appropiate macros"""
+    """Replace dlamch_ calls with appropriate macros"""
     def repl(m):
         s = m.group(1)
         return dict(E='EPSILON', P='PRECISION', S='SAFEMINIMUM',
@@ -244,6 +280,8 @@ def scrubSource(source, nsteps=None, verbose=False):
              ('clean source', cleanSource),
              ('clean comments', cleanComments),
              ('replace dlamch_() calls', replaceDlamch),
+             ('remove prototypes', removeSubroutinePrototypes),
+             ('remove builtin function prototypes', removeBuiltinFunctions),
             ]
 
     if nsteps is not None:
@@ -251,7 +289,7 @@ def scrubSource(source, nsteps=None, verbose=False):
 
     for msg, step in steps:
         if verbose:
-            print msg
+            print(msg)
         source = step(source)
 
     return source
@@ -259,9 +297,8 @@ def scrubSource(source, nsteps=None, verbose=False):
 if __name__ == '__main__':
     filename = sys.argv[1]
     outfilename = os.path.join(sys.argv[2], os.path.basename(filename))
-    fo = open(filename, 'r')
-    source = fo.read()
-    fo.close()
+    with open(filename, 'r') as fo:
+        source = fo.read()
 
     if len(sys.argv) > 3:
         nsteps = int(sys.argv[3])
@@ -270,7 +307,5 @@ if __name__ == '__main__':
 
     source = scrub_source(source, nsteps, verbose=True)
 
-    writefo = open(outfilename, 'w')
-    writefo.write(source)
-    writefo.close()
-
+    with open(outfilename, 'w') as writefo:
+        writefo.write(source)

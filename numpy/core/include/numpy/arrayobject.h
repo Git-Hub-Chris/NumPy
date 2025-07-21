@@ -1,21 +1,12 @@
-
-/* This expects the following variables to be defined (besides
-   the usual ones from pyconfig.h
-
-   SIZEOF_LONG_DOUBLE -- sizeof(long double) or sizeof(double) if no
-                         long double is present on platform.
-   CHAR_BIT       --     number of bits in a char (usually 8)
-                         (should be in limits.h)
-
-*/
-
-#ifndef Py_ARRAYOBJECT_H
+#ifndef NUMPY_CORE_INCLUDE_NUMPY_ARRAYOBJECT_H_
+#define NUMPY_CORE_INCLUDE_NUMPY_ARRAYOBJECT_H_
 #define Py_ARRAYOBJECT_H
+
 #include "ndarrayobject.h"
+#include "npy_interrupt.h"
+
 #ifdef NPY_NO_PREFIX
 #include "noprefix.h"
 #endif
 
-#include "npy_interrupt.h"
-
-#endif
+#endif  /* NUMPY_CORE_INCLUDE_NUMPY_ARRAYOBJECT_H_ */

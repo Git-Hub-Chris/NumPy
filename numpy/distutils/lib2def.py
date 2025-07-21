@@ -1,7 +1,6 @@
 import re
 import sys
-import os
-import string
+import subprocess
 
 __doc__ = """This module generates a DEF file from the symbols in
 an MSVC-compiled DLL import library.  It correctly discriminates between
@@ -21,11 +20,9 @@ Last Update: April 30, 1999
 
 __version__ = '0.1a'
 
-import sys
-
 py_ver = "%d%d" % tuple(sys.version_info[:2])
 
-DEFAULT_NM = 'nm -Cs'
+DEFAULT_NM = ['nm', '-Cs']
 
 DEF_HEADER = """LIBRARY         python%s.dll
 ;CODE           PRELOAD MOVEABLE DISCARDABLE
@@ -48,8 +45,8 @@ libfile, deffile = parse_cmd()"""
         elif sys.argv[1][-4:] == '.def' and sys.argv[2][-4:] == '.lib':
             deffile, libfile = sys.argv[1:]
         else:
-            print "I'm assuming that your first argument is the library"
-            print "and the second is the DEF file."
+            print("I'm assuming that your first argument is the library")
+            print("and the second is the DEF file.")
     elif len(sys.argv) == 2:
         if sys.argv[1][-4:] == '.def':
             deffile = sys.argv[1]
@@ -62,13 +59,16 @@ libfile, deffile = parse_cmd()"""
         deffile = None
     return libfile, deffile
 
-def getnm(nm_cmd = 'nm -Cs python%s.lib' % py_ver):
+def getnm(nm_cmd=['nm', '-Cs', 'python%s.lib' % py_ver], shell=True):
     """Returns the output of nm_cmd via a pipe.
 
-nm_output = getnam(nm_cmd = 'nm -Cs py_lib')"""
-    f = os.popen(nm_cmd)
-    nm_output = f.read()
-    f.close()
+nm_output = getnm(nm_cmd = 'nm -Cs py_lib')"""
+    p = subprocess.Popen(nm_cmd, shell=shell, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE, universal_newlines=True)
+    nm_output, nm_err = p.communicate()
+    if p.returncode != 0:
+        raise RuntimeError('failed to run "%s": "%s"' % (
+                                     ' '.join(nm_cmd), nm_err))
     return nm_output
 
 def parse_nm(nm_output):
@@ -110,7 +110,7 @@ if __name__ == '__main__':
         deffile = sys.stdout
     else:
         deffile = open(deffile, 'w')
-    nm_cmd = '%s %s' % (DEFAULT_NM, libfile)
-    nm_output = getnm(nm_cmd)
+    nm_cmd = DEFAULT_NM + [str(libfile)]
+    nm_output = getnm(nm_cmd, shell=False)
     dlist, flist = parse_nm(nm_output)
     output_def(dlist, flist, DEF_HEADER, deffile)

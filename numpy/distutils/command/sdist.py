@@ -1,4 +1,9 @@
-from distutils.command.sdist import sdist as old_sdist
+import sys
+if 'setuptools' in sys.modules:
+    from setuptools.command.sdist import sdist as old_sdist
+else:
+    from distutils.command.sdist import sdist as old_sdist
+
 from numpy.distutils.misc_util import get_data_files
 
 class sdist(old_sdist):
@@ -15,7 +20,7 @@ class sdist(old_sdist):
         if dist.has_headers():
             headers = []
             for h in dist.headers:
-                if isinstance(h,str): headers.append(h)
+                if isinstance(h, str): headers.append(h)
                 else: headers.append(h[1])
             self.filelist.extend(headers)
 

@@ -1,12 +1,14 @@
 import os
 import genapi
 
-UFUNC_API_ORDER = 'ufunc_api_order.txt'
+import numpy_api
+
+from genapi import TypeApi, FunctionApi
 
 h_template = r"""
 #ifdef _UMATHMODULE
 
-static PyTypeObject PyUFunc_Type;
+extern NPY_NO_EXPORT PyTypeObject PyUFunc_Type;
 
 %s
 
@@ -26,36 +28,81 @@ static void **PyUFunc_API=NULL;
 #endif
 #endif
 
-#define PyUFunc_Type (*(PyTypeObject *)PyUFunc_API[0])
-
 %s
 
-static int
+static NPY_INLINE int
 _import_umath(void)
 {
-  PyObject *numpy = PyImport_ImportModule("numpy.core.umath");
+  PyObject *numpy = PyImport_ImportModule("numpy.core._multiarray_umath");
   PyObject *c_api = NULL;
 
-  if (numpy == NULL) return -1;
-  c_api = PyObject_GetAttrString(numpy, "_UFUNC_API");
-  if (c_api == NULL) {Py_DECREF(numpy); return -1;}
-  if (PyCObject_Check(c_api)) {
-      PyUFunc_API = (void **)PyCObject_AsVoidPtr(c_api);
+  if (numpy == NULL) {
+      PyErr_SetString(PyExc_ImportError,
+                      "numpy.core._multiarray_umath failed to import");
+      return -1;
   }
-  Py_DECREF(c_api);
+  c_api = PyObject_GetAttrString(numpy, "_UFUNC_API");
   Py_DECREF(numpy);
-  if (PyUFunc_API == NULL) return -1;
+  if (c_api == NULL) {
+      PyErr_SetString(PyExc_AttributeError, "_UFUNC_API not found");
+      return -1;
+  }
+
+  if (!PyCapsule_CheckExact(c_api)) {
+      PyErr_SetString(PyExc_RuntimeError, "_UFUNC_API is not PyCapsule object");
+      Py_DECREF(c_api);
+      return -1;
+  }
+  PyUFunc_API = (void **)PyCapsule_GetPointer(c_api, NULL);
+  Py_DECREF(c_api);
+  if (PyUFunc_API == NULL) {
+      PyErr_SetString(PyExc_RuntimeError, "_UFUNC_API is NULL pointer");
+      return -1;
+  }
   return 0;
 }
 
-#define import_umath() { if (_import_umath() < 0) {PyErr_Print(); PyErr_SetString(PyExc_ImportError, "numpy.core.umath failed to import"); return; }}
+#define import_umath() \
+    do {\
+        UFUNC_NOFPE\
+        if (_import_umath() < 0) {\
+            PyErr_Print();\
+            PyErr_SetString(PyExc_ImportError,\
+                    "numpy.core.umath failed to import");\
+            return NULL;\
+        }\
+    } while(0)
 
-#define import_umath1(ret) { if (_import_umath() < 0) {PyErr_Print(); PyErr_SetString(PyExc_ImportError, "numpy.core.umath failed to import"); return ret; }}
+#define import_umath1(ret) \
+    do {\
+        UFUNC_NOFPE\
+        if (_import_umath() < 0) {\
+            PyErr_Print();\
+            PyErr_SetString(PyExc_ImportError,\
+                    "numpy.core.umath failed to import");\
+            return ret;\
+        }\
+    } while(0)
 
-#define import_umath2(msg, ret) { if (_import_umath() < 0) {PyErr_Print(); PyErr_SetString(PyExc_ImportError, msg); return ret; }}
+#define import_umath2(ret, msg) \
+    do {\
+        UFUNC_NOFPE\
+        if (_import_umath() < 0) {\
+            PyErr_Print();\
+            PyErr_SetString(PyExc_ImportError, msg);\
+            return ret;\
+        }\
+    } while(0)
 
-#define import_ufunc() { if (_import_umath() < 0) {PyErr_Print(); PyErr_SetString(PyExc_ImportError, "numpy.core.umath failed to import"); }}
-
+#define import_ufunc() \
+    do {\
+        UFUNC_NOFPE\
+        if (_import_umath() < 0) {\
+            PyErr_Print();\
+            PyErr_SetString(PyExc_ImportError,\
+                    "numpy.core.umath failed to import");\
+        }\
+    } while(0)
 
 #endif
 """
@@ -66,60 +113,81 @@ c_template = r"""
 */
 
 void *PyUFunc_API[] = {
-        (void *) &PyUFunc_Type,
 %s
 };
 """
 
 def generate_api(output_dir, force=False):
-    header_file = os.path.join(output_dir, '__ufunc_api.h')
-    c_file = os.path.join(output_dir, '__ufunc_api.c')
-    doc_file = os.path.join(output_dir, 'ufunc_api.txt')
+    basename = 'ufunc_api'
 
-    targets = (header_file, c_file, doc_file)
-    if (not force
-            and not genapi.should_rebuild(targets,
-                                          [UFUNC_API_ORDER, __file__])):
+    h_file = os.path.join(output_dir, '__%s.h' % basename)
+    c_file = os.path.join(output_dir, '__%s.c' % basename)
+    d_file = os.path.join(output_dir, '%s.txt' % basename)
+    targets = (h_file, c_file, d_file)
+
+    sources = ['ufunc_api_order.txt']
+
+    if (not force and not genapi.should_rebuild(targets, sources + [__file__])):
         return targets
+    else:
+        do_generate_api(targets, sources)
 
-    ufunc_api_list = genapi.get_api_functions('UFUNC_API', UFUNC_API_ORDER)
+    return targets
 
-    # API fixes for __arrayobject_api.h
+def do_generate_api(targets, sources):
+    header_file = targets[0]
+    c_file = targets[1]
+    doc_file = targets[2]
 
-    fixed = 1
-    nummulti = len(ufunc_api_list)
-    numtotal = fixed + nummulti
+    ufunc_api_index = genapi.merge_api_dicts((
+            numpy_api.ufunc_funcs_api,
+            numpy_api.ufunc_types_api))
+    genapi.check_api_dict(ufunc_api_index)
 
+    ufunc_api_list = genapi.get_api_functions('UFUNC_API', numpy_api.ufunc_funcs_api)
+
+    # Create dict name -> *Api instance
+    ufunc_api_dict = {}
+    api_name = 'PyUFunc_API'
+    for f in ufunc_api_list:
+        name = f.name
+        index = ufunc_api_index[name][0]
+        annotations = ufunc_api_index[name][1:]
+        ufunc_api_dict[name] = FunctionApi(f.name, index, annotations,
+                                           f.return_type, f.args, api_name)
+
+    for name, val in numpy_api.ufunc_types_api.items():
+        index = val[0]
+        ufunc_api_dict[name] = TypeApi(name, index, 'PyTypeObject', api_name)
+
+    # set up object API
     module_list = []
     extension_list = []
     init_list = []
 
-    # set up object API
-    genapi.add_api_list(fixed, 'PyUFunc_API', ufunc_api_list,
-                        module_list, extension_list, init_list)
+    for name, index in genapi.order_dict(ufunc_api_index):
+        api_item = ufunc_api_dict[name]
+        extension_list.append(api_item.define_from_array_api_string())
+        init_list.append(api_item.array_api_define())
+        module_list.append(api_item.internal_define())
 
     # Write to header
-    fid = open(header_file, 'w')
     s = h_template % ('\n'.join(module_list), '\n'.join(extension_list))
-    fid.write(s)
-    fid.close()
+    genapi.write_file(header_file, s)
 
     # Write to c-code
-    fid = open(c_file, 'w')
-    s = c_template % '\n'.join(init_list)
-    fid.write(s)
-    fid.close()
+    s = c_template % ',\n'.join(init_list)
+    genapi.write_file(c_file, s)
 
     # Write to documentation
-    fid = open(doc_file, 'w')
-    fid.write('''
+    s = '''
 =================
-Numpy Ufunc C-API
+NumPy Ufunc C-API
 =================
-''')
+'''
     for func in ufunc_api_list:
-        fid.write(func.to_ReST())
-        fid.write('\n\n')
-    fid.close()
+        s += func.to_ReST()
+        s += '\n\n'
+    genapi.write_file(doc_file, s)
 
     return targets

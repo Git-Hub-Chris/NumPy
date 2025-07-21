@@ -1,62 +1,59 @@
-# The following exec statement (or something like it) is needed to
-# prevent SyntaxError on Python < 2.5. Even though this is a test,
-# SyntaxErrors are not acceptable; on Debian systems, they block
-# byte-compilation during install and thus cause the package to fail
-# to install.
+import pytest
+import sysconfig
 
-import sys
-if sys.version_info[:2] >= (2, 5):
-    exec """
-from __future__ import with_statement
-from numpy.core import *
-from numpy.random import rand, randint
-from numpy.testing import *
+import numpy as np
+from numpy.testing import assert_, assert_raises
 
+# The floating point emulation on ARM EABI systems lacking a hardware FPU is
+# known to be buggy. This is an attempt to identify these hosts. It may not
+# catch all possible cases, but it catches the known cases of gh-413 and
+# gh-15562.
+hosttype = sysconfig.get_config_var('HOST_GNU_TYPE')
+arm_softfloat = False if hosttype is None else hosttype.endswith('gnueabi')
 
-
-class test_errstate(NumpyTestCase):
-
-
+class TestErrstate:
+    @pytest.mark.skipif(arm_softfloat,
+                        reason='platform/cpu issue with FPU (gh-413,-15562)')
     def test_invalid(self):
-        with errstate(all='raise', under='ignore'):
-            a = -arange(3)
+        with np.errstate(all='raise', under='ignore'):
+            a = -np.arange(3)
             # This should work
-            with errstate(invalid='ignore'):
-                sqrt(a)
+            with np.errstate(invalid='ignore'):
+                np.sqrt(a)
             # While this should fail!
-            try:
-                sqrt(a)
-            except FloatingPointError:
-                pass
-            else:
-                self.fail()
+            with assert_raises(FloatingPointError):
+                np.sqrt(a)
 
+    @pytest.mark.skipif(arm_softfloat,
+                        reason='platform/cpu issue with FPU (gh-15562)')
     def test_divide(self):
-        with errstate(all='raise', under='ignore'):
-            a = -arange(3)
+        with np.errstate(all='raise', under='ignore'):
+            a = -np.arange(3)
             # This should work
-            with errstate(divide='ignore'):
-                a / 0
+            with np.errstate(divide='ignore'):
+                a // 0
             # While this should fail!
-            try:
-                a / 0
-            except FloatingPointError:
-                pass
-            else:
-                self.fail()
+            with assert_raises(FloatingPointError):
+                a // 0
+            # As should this, see gh-15562
+            with assert_raises(FloatingPointError):
+                a // a
 
     def test_errcall(self):
         def foo(*args):
-            print args
-        olderrcall = geterrcall()
-        with errstate(call=foo):
-            assert(geterrcall() is foo), 'call is not foo'
-            with errstate(call=None):
-                assert(geterrcall() is None), 'call is not None'
-        assert(geterrcall() is olderrcall), 'call is not olderrcall'
+            print(args)
 
-"""
+        olderrcall = np.geterrcall()
+        with np.errstate(call=foo):
+            assert_(np.geterrcall() is foo, 'call is not foo')
+            with np.errstate(call=None):
+                assert_(np.geterrcall() is None, 'call is not None')
+        assert_(np.geterrcall() is olderrcall, 'call is not olderrcall')
 
-if __name__ == '__main__':
-    from numpy.testing import *
-    NumpyTest().run()
+    def test_errstate_decorator(self):
+        @np.errstate(all='ignore')
+        def foo():
+            a = -np.arange(3)
+            a // 0
+            
+        foo()

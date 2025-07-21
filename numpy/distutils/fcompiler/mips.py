@@ -1,20 +1,20 @@
-import os
-import sys
-
 from numpy.distutils.cpuinfo import cpu
 from numpy.distutils.fcompiler import FCompiler
 
-class MipsFCompiler(FCompiler):
+compilers = ['MIPSFCompiler']
+
+class MIPSFCompiler(FCompiler):
 
     compiler_type = 'mips'
+    description = 'MIPSpro Fortran Compiler'
     version_pattern =  r'MIPSpro Compilers: Version (?P<version>[^\s*,]*)'
 
     executables = {
-        'version_cmd'  : ["f90", "-version"],
+        'version_cmd'  : ["<F90>", "-version"],
         'compiler_f77' : ["f77", "-f77"],
         'compiler_fix' : ["f90", "-fixedform"],
         'compiler_f90' : ["f90"],
-        'linker_so'    : ["f90","-shared"],
+        'linker_so'    : ["f90", "-shared"],
         'archiver'     : ["ar", "-cr"],
         'ranlib'       : None
         }
@@ -29,7 +29,7 @@ class MipsFCompiler(FCompiler):
     def get_flags_arch(self):
         opt = []
         for a in '19 20 21 22_4k 22_5k 24 25 26 27 28 30 32_5k 32_10k'.split():
-            if getattr(cpu,'is_IP%s'%a)():
+            if getattr(cpu, 'is_IP%s'%a)():
                 opt.append('-TARG:platform=IP%s' % a)
                 break
         return opt
@@ -50,7 +50,5 @@ class MipsFCompiler(FCompiler):
         return r
 
 if __name__ == '__main__':
-    from numpy.distutils.fcompiler import new_fcompiler
-    compiler = new_fcompiler(compiler='mips')
-    compiler.customize()
-    print compiler.get_version()
+    from numpy.distutils import customized_fcompiler
+    print(customized_fcompiler(compiler='mips').get_version())
